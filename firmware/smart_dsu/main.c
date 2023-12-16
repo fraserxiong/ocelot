@@ -651,7 +651,7 @@ int main(void) {
   int fade=0;
 
   while (1) {
-    if(fade == 512){
+    if(fade == 3){
       current_board->set_led(LED_GREEN, 1);
       fade = 0;
     }else{
