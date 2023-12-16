@@ -647,7 +647,17 @@ int main(void) {
   enable_interrupts();
 
   // main pedal loop
+
+  int fade=0;
+
   while (1) {
+    if(fade == 512){
+      current_board->set_led(LED_GREEN, 1);
+      fade = 0;
+    }else{
+      current_board->set_led(LED_GREEN, 1);
+      fade ++;
+    }
     gw();
   }
 
