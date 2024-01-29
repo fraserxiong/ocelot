@@ -234,11 +234,14 @@ bool send = 0;
 
 #define ACC_CTRL 0xF10
 bool enable_acc = 0;
+bool enable_acc_led = 0;
 bool op_ctrl_mode = 0;
+bool op_ctrl_mode_led = 0;
 int acc_cmd = 0;
 
 #define AEB_CTRL 0xF11
 bool enable_aeb_control = 0;
+bool enable_aeb_led = 0;
 int aeb_cmd = 0;
 
 //------------- BUS 2 - DSU -------------//
@@ -291,16 +294,19 @@ void CAN1_RX0_IRQ_Handler(void) {
       case DSU_ACC_CONTROL: // hack to allow the firmware to support stock OP
         to_fwd.RIR &= 0xFFFFFFFE; // do not fwd
         op_ctrl_mode = 1;
+        op_ctrl_mode_led = 1;
         // reset timer for op_ctrl_mode
         TIM2->CNT = 0;
         break;
       case ACC_CTRL:
+        // enable_acc_led = 1;
         // send this EXACTLY how ACC_CONTROL is sent
         for (int i=0; i<8; i++) {
           dat[i] = GET_BYTE(&CAN1->sFIFOMailBox[0], i);
         }
         if (dat[7] == toyota_checksum(address, dat, 8)){
           enable_acc = 1; // TODO: set this somewhere else.. 1D2? do we need this?
+          enable_acc_led = 1;
           acc_cmd = (dat[0] << 8U) | dat[1]; // ACC_CMD
           acc_cancel = (dat[3] & 1U);
           // reset the timer
@@ -314,6 +320,7 @@ void CAN1_RX0_IRQ_Handler(void) {
         to_fwd.RIR &= 0xFFFFFFFE; // do not fwd
         break;
       case AEB_CTRL:
+        // enable_aeb_led = 1;
         // send this EXACTLY how PRE_COLLISION2 is sent
         for (int i=0; i<8; i++) {
           dat[i] = GET_BYTE(&CAN1->sFIFOMailBox[0], i);
@@ -321,6 +328,7 @@ void CAN1_RX0_IRQ_Handler(void) {
         if (dat[7] == toyota_checksum(address, dat, 8)){
           // an emergency maneuver is being requested
           enable_aeb_control = 1;
+          enable_aeb_led = 1;
           aeb_cmd = (dat[0] << 2U) | (dat[1] & 3U);
           // reset the timer
           timeout_f11 = 0;
@@ -532,12 +540,14 @@ void TIM3_IRQ_Handler(void) {
   }
   if (timeout_f10 == MAX_TIMEOUT){
     enable_acc = 0;
+    enable_acc_led = 0;
     ctrl_mode &= 0xFE; // clear ACC ctrl mode bit
   } else {
     timeout_f10 += 1U;
   }
   if (timeout_f11 == MAX_TIMEOUT){
     enable_aeb_control = 0;
+    enable_aeb_led = 0;
     ctrl_mode &= 0xFD; // clear AEB ctrl mode bit
   } else {
     timeout_f11 += 1U;
@@ -548,6 +558,7 @@ void TIM3_IRQ_Handler(void) {
   uint32_t op_ts = TIM2->CNT;
   if (op_ts > 100000){
     op_ctrl_mode = 0;
+    op_ctrl_mode_led = 0;
   }
 
 #ifdef DEBUG_CTRL
@@ -656,6 +667,25 @@ int main(void) {
 
   // main pedal loop
   while (1) {
+
+    if(green_led_enabled){
+      current_board->set_led(LED_GREEN, true);
+    }else{
+      current_board->set_led(LED_GREEN, false);
+    }
+
+    if(enable_acc_led | op_ctrl_mode_led){
+      current_board->set_led(LED_BLUE, true);
+    }else{
+      current_board->set_led(LED_BLUE, false);
+    }
+
+    if(enable_aeb_led){
+      current_board->set_led(LED_RED, true);
+    }else{
+      current_board->set_led(LED_RED, false);
+    }
+
     gw();
   }
 
