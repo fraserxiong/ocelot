@@ -359,29 +359,26 @@ void CAN1_SCE_IRQ_Handler(void) {
   llcan_clear_send(CAN1);
 }
 
-// CAN2 not used for now.. chip shortage means don't populate on the board
+void CAN2_RX0_IRQ_Handler(void) {
+  while ((CAN2->RF0R & CAN_RF0R_FMP0) != 0) {
+    uint16_t address = CAN2->sFIFOMailBox[0].RIR >> 21;
+    #ifdef DEBUG_CAN
+    puts("CAN2 RX: ");
+    puth(address);
+    puts("\n");
+    #else
+    UNUSED(address);
+    #endif
+    // next
+    can_rx(1);
+  }
+}
 
-// void CAN2_RX0_IRQ_Handler(void) {
-//   while ((CAN3->RF0R & CAN_RF0R_FMP0) != 0) {
-//     uint16_t address = CAN3->sFIFOMailBox[0].RIR >> 21;
-//     #ifdef DEBUG_CAN
-//     puts("CAN3 RX: ");
-//     puth(address);
-//     puts("\n");
-//     #else
-//     UNUSED(address);
-//     #endif
-
-//     // next
-//     can_rx(1);
-//   }
-// }
-
-// void CAN2_SCE_IRQ_Handler(void) {
-//   state = FAULT_SCE;
-//   can_sce(CAN2);
-//   llcan_clear_send(CAN2);
-// }
+void CAN2_SCE_IRQ_Handler(void) {
+  state = FAULT_SCE;
+  can_sce(CAN2);
+  llcan_clear_send(CAN2);
+}
 
 void CAN3_RX0_IRQ_Handler(void) {
   // From the DSU
@@ -594,9 +591,9 @@ int main(void) {
   REGISTER_INTERRUPT(CAN1_TX_IRQn, CAN1_TX_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_1)
   REGISTER_INTERRUPT(CAN1_RX0_IRQn, CAN1_RX0_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_1)
   REGISTER_INTERRUPT(CAN1_SCE_IRQn, CAN1_SCE_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_1)
-  // REGISTER_INTERRUPT(CAN2_TX_IRQn, CAN2_TX_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
-  // REGISTER_INTERRUPT(CAN2_RX0_IRQn, CAN2_RX0_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
-  // REGISTER_INTERRUPT(CAN2_SCE_IRQn, CAN2_SCE_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
+  REGISTER_INTERRUPT(CAN2_TX_IRQn, CAN2_TX_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
+  REGISTER_INTERRUPT(CAN2_RX0_IRQn, CAN2_RX0_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
+  REGISTER_INTERRUPT(CAN2_SCE_IRQn, CAN2_SCE_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_2)
   REGISTER_INTERRUPT(CAN3_TX_IRQn, CAN3_TX_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_3)
   REGISTER_INTERRUPT(CAN3_RX0_IRQn, CAN3_RX0_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_3)
   REGISTER_INTERRUPT(CAN3_SCE_IRQn, CAN3_SCE_IRQ_Handler, CAN_INTERRUPT_RATE, FAULT_INTERRUPT_RATE_CAN_3)
@@ -634,17 +631,17 @@ int main(void) {
   if (!llcan_speed_set) {
     puts("Failed to set llcan1 speed");
   }
-  // llcan_speed_set = llcan_set_speed(CAN2, 5000, false, false);
-  // if (!llcan_speed_set) {
-  //   puts("Failed to set llcan2 speed");
-  // }
+  llcan_speed_set = llcan_set_speed(CAN2, 5000, false, false);
+  if (!llcan_speed_set) {
+    puts("Failed to set llcan2 speed");
+  }
   llcan_speed_set = llcan_set_speed(CAN3, 5000, false, false);
   if (!llcan_speed_set) {
     puts("Failed to set llcan3 speed");
   }
 
   bool ret = llcan_init(CAN1);
-  // ret = llcan_init(CAN2);
+  ret = llcan_init(CAN2);
   ret = llcan_init(CAN3);
   UNUSED(ret);
 
