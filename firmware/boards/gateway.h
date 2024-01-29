@@ -47,7 +47,23 @@ void gateway_set_usb_load_switch(bool enabled) {
 }
 
 void gateway_set_usb_power_mode(uint8_t mode){
-  UNUSED(mode);
+  bool valid = false;
+  switch (mode) {
+    case USB_POWER_CLIENT:
+      gateway_set_usb_load_switch(false);
+      valid = true;
+      break;
+    case USB_POWER_CDP:
+      gateway_set_usb_load_switch(true);
+      valid = true;
+      break;
+    default:
+      puts("Invalid USB power mode\n");
+      break;
+  }
+  if (valid) {
+    usb_power_mode = mode;
+  }
 }
 
 void gateway_set_gps_mode(uint8_t mode) {
@@ -109,6 +125,10 @@ void gateway_set_siren(bool enabled){
 void gateway_init(void) {
   common_init_gpio();
 
+  // Turn on USB load switch.
+  gateway_set_usb_load_switch(true);  
+  // Set right power mode
+  gateway_set_usb_power_mode(USB_POWER_CDP);
   // Enable CAN transceivers
   gateway_enable_can_transceivers(true);
   // Set normal CAN mode
